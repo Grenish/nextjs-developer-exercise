@@ -1,6 +1,6 @@
 # Next.js developer exercise
 
-&copy; 2026 Renderbit Technologies LLP.
+&copy; 2026 Renderbit Technologies Pvt. Ltd.
 
 ## Prerequisites
 
