@@ -10,7 +10,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Cursor Cloud specific instructions
 
-This is a single Next.js 16 app (npm, Node 20+). No database or external services are configured in the starter repo.
+This is a single Next.js 16 app (npm; Node 20+ recommended). No database or external services are configured in the starter repo.
 
 - **Install:** `npm ci` (lockfile-driven; run from repo root)
 - **Dev server:** `npm run dev -- --hostname 0.0.0.0 --port 3000` — also started automatically via the environment `start` script
