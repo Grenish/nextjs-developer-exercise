@@ -3,7 +3,7 @@ import { Geist_Mono, Raleway, DM_Sans, Outfit } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
-import Navbar from "@/components/navbar";
+import { Toaster } from "@/components/ui/toast";
 
 const dmSansHeading = DM_Sans({
   subsets: ["latin"],
@@ -42,15 +42,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         dmSansHeading.variable,
       )}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
-          <Navbar />
-          {children}
+          <Toaster>{children}</Toaster>
         </ThemeProvider>
       </body>
     </html>
