@@ -16,6 +16,7 @@ export const blogsSchema = pgTable("blogs", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
   content: text("content").notNull(),
+  hashTags: text("hash_tags").array().notNull(),
   status: blogStatusEnum("status").default("draft").notNull(),
   isFeatured: boolean("is_featured").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
