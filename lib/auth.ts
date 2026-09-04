@@ -14,11 +14,25 @@ export const auth = betterAuth({
     minPasswordLength: 8,
   },
   user: {
+    deleteUser: {
+      enabled: true,
+    },
     additionalFields: {
       username: {
         type: "string",
         required: true,
         unique: true,
+        input: true,
+      },
+      disabled: {
+        type: "boolean",
+        required: false,
+        defaultValue: false,
+        input: false,
+      },
+      headerImage: {
+        type: "string",
+        required: false,
         input: true,
       },
     },
