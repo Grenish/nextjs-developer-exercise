@@ -22,6 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "@/components/ui/toast";
+import { reservedUsernameSet } from "@/lib/constants";
 
 const SPECIAL_CHAR = /[^A-Za-z0-9]/;
 const USERNAME = /^[a-zA-Z0-9_]{3,24}$/;
@@ -44,6 +45,8 @@ export function SignUpForm() {
       next.name = "Name must be at least 2 characters.";
     if (!USERNAME.test(values.username)) {
       next.username = "Use 3–24 letters, numbers, or underscores.";
+    } else if (reservedUsernameSet.has(values.username.toLowerCase())) {
+      next.username = "That username is reserved.";
     }
     if (!values.email.includes("@")) next.email = "Enter a valid email.";
     if (values.password.length < 8) {
@@ -77,7 +80,7 @@ export function SignUpForm() {
       name: values.name,
       email: values.email,
       password: values.password,
-      username: values.username,
+      username: values.username.toLowerCase(),
       callbackURL: "/",
     });
     setPending(false);
