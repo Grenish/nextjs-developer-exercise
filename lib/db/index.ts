@@ -1,6 +1,6 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { authRelations } from "./schema";
+import { appRelations } from "./schema";
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -10,7 +10,7 @@ if (!databaseUrl) {
 
 export const db = drizzle({
   client: neon(databaseUrl),
-  relations: authRelations,
+  relations: appRelations,
 });
 
 export * from "./schema";
