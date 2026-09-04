@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   RiLogoutBoxRLine,
+  RiQuillPenLine,
   RiSettings3Line,
   RiUser3Line,
 } from "@remixicon/react";
@@ -101,6 +102,13 @@ export function UserMenu({ user: initialUser }: { user: UserMenuUser | null }) {
           >
             <RiUser3Line />
             Profile
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            nativeButton={false}
+            render={<Link href="/admin" />}
+          >
+            <RiQuillPenLine />
+            Studio
           </DropdownMenuItem>
           <DropdownMenuItem
             nativeButton={false}
