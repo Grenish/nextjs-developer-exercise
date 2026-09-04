@@ -1,21 +1,9 @@
-"use client";
-
-import { useEffect, useRef, useState } from "react";
-import { useMotionValueEvent, useScroll } from "motion/react";
-import BlogCard from "@/components/blog-card";
+import { Suspense } from "react";
+import Link from "next/link";
 import Featured from "@/components/featured";
-import { Button } from "@/components/ui/button";
+import HomeTabs from "@/components/home-tabs";
+import PostGrid from "@/components/post-grid";
 import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RiAddLine, RiEmotionSadLine, RiSearch2Line } from "@remixicon/react";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import {
   Empty,
   EmptyDescription,
@@ -23,119 +11,198 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { RiEmotionSadLine } from "@remixicon/react";
+import { listFollowingIds } from "@/lib/db/queries/follows";
+import {
+  getFeaturedPosts,
+  listPublishedPosts,
+  listPublishedPostsByAuthorIds,
+} from "@/lib/db/queries/posts";
+import { getSession } from "@/lib/session";
+import { getViewerLikeState } from "@/lib/viewer-likes";
 
-export default function Home() {
-  const { scrollY } = useScroll();
-  const [isScrolled, setIsScrolled] = useState(false);
-  const stickyRef = useRef<HTMLDivElement>(null);
-  const triggerPointRef = useRef(0);
+async function FeaturedSection() {
+  const [posts, session] = await Promise.all([
+    getFeaturedPosts(),
+    getSession(),
+  ]);
+  const likeState = await getViewerLikeState(
+    posts.map((post) => post.id),
+    session,
+  );
+  return (
+    <Featured
+      posts={posts}
+      signedIn={likeState.signedIn}
+      likedIds={likeState.likedIds}
+    />
+  );
+}
 
-  useEffect(() => {
-    const stickyTopOffset = 80;
+async function PublishedFeed({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const params = await searchParams;
+  const page = Math.max(1, Number(params.page) || 1);
+  const [feed, session] = await Promise.all([
+    listPublishedPosts(page),
+    getSession(),
+  ]);
 
-    const calculateTriggerPoint = () => {
-      if (stickyRef.current) {
-        triggerPointRef.current = stickyRef.current.offsetTop - stickyTopOffset;
-      }
-    };
+  if (feed.items.length === 0) {
+    return (
+      <p className="py-16 text-center text-muted-foreground">
+        No published posts yet. Be the first to write one.
+      </p>
+    );
+  }
 
-    calculateTriggerPoint();
-    window.addEventListener("resize", calculateTriggerPoint);
-    return () => window.removeEventListener("resize", calculateTriggerPoint);
-  }, []);
-
-  useMotionValueEvent(scrollY, "change", (latest) => {
-    setIsScrolled(latest >= triggerPointRef.current);
-  });
+  const likeState = await getViewerLikeState(
+    feed.items.map((post) => post.id),
+    session,
+  );
 
   return (
-    <div className="mx-auto min-h-190 w-full px-4 sm:w-9/12 sm:px-0 mt-5 pb-10">
-      <Featured />
-      <Separator className={"my-8"} />
-      <Tabs>
-        <div
-          ref={stickyRef}
-          className={`flex items-center justify-between transition-all duration-300 ease-out sticky top-20 z-50 bg-background/70 backdrop-blur-2xl p-2 rounded-full mx-auto ${
-            isScrolled ? "w-100" : "w-full"
-          }`}
-        >
-          <TabsList>
-            <TabsTrigger value="for-you">For You</TabsTrigger>
-            <TabsTrigger value="following">Following</TabsTrigger>
-          </TabsList>
-          <div className="flex items-center gap-2">
-            <Button size={"default"} variant={"outline"}>
-              <RiAddLine /> Write
-            </Button>
-            <Button size={"icon"} variant={"outline"}>
-              <RiSearch2Line />
-            </Button>
-          </div>
+    <PostGrid
+      posts={feed.items}
+      page={feed.page}
+      pageCount={feed.pageCount}
+      basePath="/"
+      signedIn={likeState.signedIn}
+      likedIds={likeState.likedIds}
+    />
+  );
+}
+
+async function FollowingFeed({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; tab?: string }>;
+}) {
+  const params = await searchParams;
+  const tab = params.tab === "following" ? "following" : "for-you";
+  const page = Math.max(1, Number(params.page) || 1);
+  const followingPage = tab === "following" ? page : 1;
+  const session = await getSession();
+
+  if (!session?.user) {
+    return (
+      <Empty className="min-h-80">
+        <EmptyMedia variant="icon">
+          <RiEmotionSadLine />
+        </EmptyMedia>
+        <EmptyHeader>
+          <EmptyTitle>Sign in to follow writers</EmptyTitle>
+          <EmptyDescription>
+            <Link href="/signin?next=/?tab=following" className="underline">
+              Sign in
+            </Link>{" "}
+            and follow a few people to fill this timeline.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
+  const authorIds = await listFollowingIds(session.user.id);
+  if (authorIds.length === 0) {
+    return (
+      <Empty className="min-h-80">
+        <EmptyMedia variant="icon">
+          <RiEmotionSadLine />
+        </EmptyMedia>
+        <EmptyHeader>
+          <EmptyTitle>Nothing to show here</EmptyTitle>
+          <EmptyDescription>
+            You are not following anyone yet. Follow a few writers to curate
+            this timeline.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
+  const feed = await listPublishedPostsByAuthorIds(authorIds, followingPage);
+  if (feed.items.length === 0) {
+    return (
+      <Empty className="min-h-80">
+        <EmptyMedia variant="icon">
+          <RiEmotionSadLine />
+        </EmptyMedia>
+        <EmptyHeader>
+          <EmptyTitle>No posts from people you follow</EmptyTitle>
+          <EmptyDescription>
+            The writers you follow have not published anything yet.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
+  const likeState = await getViewerLikeState(
+    feed.items.map((post) => post.id),
+    session,
+  );
+
+  return (
+    <PostGrid
+      posts={feed.items}
+      page={feed.page}
+      pageCount={feed.pageCount}
+      basePath="/?tab=following"
+      signedIn={likeState.signedIn}
+      likedIds={likeState.likedIds}
+    />
+  );
+}
+
+function FeedFallback() {
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div key={index} className="flex flex-col gap-2 p-2">
+          <div className="h-75 rounded-2xl bg-muted" />
+          <div className="h-4 w-24 rounded bg-muted" />
+          <div className="h-6 w-3/4 rounded bg-muted" />
         </div>
-        <TabsContent value={"for-you"}>
-          <div className="grid grid-cols-3">
-            {Array.from({ length: 8 }).map((_, index) => (
-              <BlogCard key={index} />
-            ))}
-          </div>
+      ))}
+    </div>
+  );
+}
 
-          <div className="mt-5">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationLink href="#" isActive>
-                    1
-                  </PaginationLink>
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationLink href="#">2</PaginationLink>
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationLink href="#">3</PaginationLink>
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationNext />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
-        </TabsContent>
-        <TabsContent value={"following"} className={"min-h-190 flex items-center justify-center"}>
-          <Empty>
-            <EmptyMedia variant={"icon"}>
-              <RiEmotionSadLine />
-            </EmptyMedia>
-            <EmptyHeader>
-              <EmptyTitle className="capitalize">Nothing to show here</EmptyTitle>
-              <EmptyDescription>
-                You&apos;r not following anyone. Follow few creators to curate
-                your following timeline.
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; tab?: string }>;
+}) {
+  const params = await searchParams;
+  const defaultTab = params.tab === "following" ? "following" : "for-you";
 
-          <div className="mt-5 hidden">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationLink href="#" isActive>
-                    1
-                  </PaginationLink>
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationLink href="#">2</PaginationLink>
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationLink href="#">3</PaginationLink>
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationNext />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+  return (
+    <div className="mx-auto min-h-svh w-full px-4 pb-10 sm:w-9/12 sm:px-0 mt-5">
+      <Suspense
+        fallback={
+          <div className="grid grid-cols-1 gap-6 lg:h-[min(36rem,calc(100svh-12rem))] lg:grid-cols-3 lg:grid-rows-2">
+            <div className="h-56 rounded-2xl bg-muted lg:col-span-2 lg:row-span-2 lg:h-auto" />
+            <div className="h-40 rounded-2xl bg-muted lg:h-auto" />
+            <div className="h-40 rounded-2xl bg-muted lg:h-auto" />
           </div>
-        </TabsContent>
-      </Tabs>
+        }
+      >
+        <FeaturedSection />
+      </Suspense>
+      <Separator className="my-8" />
+      <HomeTabs defaultTab={defaultTab} following={
+        <Suspense fallback={<FeedFallback />}>
+          <FollowingFeed searchParams={searchParams} />
+        </Suspense>
+      }>
+        <Suspense fallback={<FeedFallback />}>
+          <PublishedFeed searchParams={searchParams} />
+        </Suspense>
+      </HomeTabs>
     </div>
   );
 }
