@@ -1,21 +1,22 @@
-import { headers } from "next/headers";
+import { Suspense } from "react";
+import AccountMenu from "@/components/account-menu";
+import AccountMenuFallback from "@/components/account-menu-fallback";
 import Footer from "@/components/footer";
 import Navbar from "@/components/navbar";
-import { auth } from "@/lib/auth";
 
-export default async function HomeLayout({
+export default function HomeLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
   return (
     <>
       <div className="relative z-10 bg-background">
-        <Navbar user={session?.user ?? null} />
+        <Navbar>
+          <Suspense fallback={<AccountMenuFallback />}>
+            <AccountMenu />
+          </Suspense>
+        </Navbar>
         {children}
       </div>
       <Footer />
