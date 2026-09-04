@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Geist_Mono, Raleway, DM_Sans, Outfit } from "next/font/google";
+import { connection } from "next/server";
+import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin";
+import { extractRouterConfig } from "uploadthing/server";
 import "./globals.css";
+import { ourFileRouter } from "@/app/api/uploadthing/core";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toast";
@@ -27,6 +32,11 @@ export const metadata: Metadata = {
   description: "Write blogs and share to the world.",
 };
 
+async function UploadThingSSR() {
+  await connection();
+  return <NextSSRPlugin routerConfig={extractRouterConfig(ourFileRouter)} />;
+}
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
@@ -49,6 +59,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           enableSystem
           disableTransitionOnChange
         >
+          <Suspense>
+            <UploadThingSSR />
+          </Suspense>
           <Toaster>{children}</Toaster>
         </ThemeProvider>
       </body>
