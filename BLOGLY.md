@@ -1,5 +1,7 @@
 # Blogly
 
+![screenshot](./public/ss1.png)
+
 A multi-author blogging app. Anyone can read. Sign-in is required to write, comment, like, and follow.
 
 ## Stack
@@ -115,3 +117,14 @@ lib/db/              schema, queries, seed
 lib/                 auth, session, cache, search
 drizzle/             SQL migrations
 ```
+
+## Screenshots
+
+![screenshot](./public/ss2.png)
+![screenshot](./public/ss3.png)
+![screenshot](./public/ss4.png)
+![screenshot](./public/ss5.png)
+![screenshot](./public/ss6.png)
+![screenshot](./public/ss7.png)
+![screenshot](./public/ss8.png)
+![screenshot](./public/ss9.png)
