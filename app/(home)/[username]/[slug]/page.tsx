@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -19,6 +20,8 @@ type PostPageProps = {
   params: Promise<{ username: string; slug: string }>;
 };
 
+type PublishedPost = NonNullable<Awaited<ReturnType<typeof getPublishedPost>>>;
+
 export async function generateMetadata({
   params,
 }: PostPageProps): Promise<Metadata> {
@@ -31,18 +34,63 @@ export async function generateMetadata({
   };
 }
 
+async function PostSessionActions({
+  post,
+}: {
+  post: PublishedPost;
+}) {
+  const session = await getSession();
+  const liked = session?.user
+    ? await hasLikedPost(session.user.id, post.id)
+    : false;
+  const returnTo = `/${post.authorUsername}/${post.slug}`;
+
+  return (
+    <LikeButton
+      postId={post.id}
+      returnTo={returnTo}
+      liked={liked}
+      count={post.likeCount}
+      signedIn={Boolean(session?.user)}
+    />
+  );
+}
+
+async function PostComments({
+  post,
+}: {
+  post: PublishedPost;
+}) {
+  const [comments, session] = await Promise.all([
+    listCommentsForPost(post.id),
+    getSession(),
+  ]);
+  const returnTo = `/${post.authorUsername}/${post.slug}`;
+
+  return (
+    <section className="flex flex-col gap-6">
+      <h2 className="font-heading text-xl font-medium tracking-tight">
+        Comments
+      </h2>
+      <CommentForm
+        postId={post.id}
+        returnTo={returnTo}
+        signedIn={Boolean(session?.user)}
+      />
+      <CommentList
+        comments={comments}
+        postAuthorId={post.authorId}
+        currentUserId={session?.user.id}
+      />
+    </section>
+  );
+}
+
 export default async function PostPage({ params }: PostPageProps) {
   const { username, slug } = await params;
   const post = await getPublishedPost(username, slug);
   if (!post) notFound();
 
-  const [comments, session] = await Promise.all([
-    listCommentsForPost(post.id),
-    getSession(),
-  ]);
-  const liked = session?.user
-    ? await hasLikedPost(session.user.id, post.id)
-    : false;
   const returnTo = `/${post.authorUsername}/${post.slug}`;
   const cover = post.coverImage || DEFAULT_COVER;
 
@@ -88,29 +136,32 @@ export default async function PostPage({ params }: PostPageProps) {
           ) : null}
         </div>
         <PostBody content={post.content} />
-        <LikeButton
-          postId={post.id}
-          returnTo={returnTo}
-          liked={liked}
-          count={post.likeCount}
-          signedIn={Boolean(session?.user)}
-        />
+        <Suspense
+          fallback={
+            <LikeButton
+              postId={post.id}
+              returnTo={returnTo}
+              liked={false}
+              count={post.likeCount}
+              signedIn={false}
+            />
+          }
+        >
+          <PostSessionActions post={post} />
+        </Suspense>
         <Separator />
-        <section className="flex flex-col gap-6">
-          <h2 className="font-heading text-xl font-medium tracking-tight">
-            Comments
-          </h2>
-          <CommentForm
-            postId={post.id}
-            returnTo={returnTo}
-            signedIn={Boolean(session?.user)}
-          />
-          <CommentList
-            comments={comments}
-            postAuthorId={post.authorId}
-            currentUserId={session?.user.id}
-          />
-        </section>
+        <Suspense
+          fallback={
+            <section className="flex flex-col gap-6">
+              <h2 className="font-heading text-xl font-medium tracking-tight">
+                Comments
+              </h2>
+              <div className="h-24 rounded-2xl bg-muted" />
+            </section>
+          }
+        >
+          <PostComments post={post} />
+        </Suspense>
       </div>
     </article>
   );

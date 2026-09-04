@@ -21,21 +21,29 @@ import {
 import { getSession } from "@/lib/session";
 import { getViewerLikeState } from "@/lib/viewer-likes";
 
-async function FeaturedSection() {
-  const [posts, session] = await Promise.all([
-    getFeaturedPosts(),
-    getSession(),
-  ]);
-  const likeState = await getViewerLikeState(
-    posts.map((post) => post.id),
-    session,
-  );
+async function FeaturedWithLikes({
+  posts,
+}: {
+  posts: Awaited<ReturnType<typeof getFeaturedPosts>>;
+}) {
+  const likeState = await getViewerLikeState(posts.map((post) => post.id));
   return (
     <Featured
       posts={posts}
       signedIn={likeState.signedIn}
       likedIds={likeState.likedIds}
     />
+  );
+}
+
+async function FeaturedSection() {
+  const posts = await getFeaturedPosts();
+  return (
+    <Suspense
+      fallback={<Featured posts={posts} signedIn={false} likedIds={[]} />}
+    >
+      <FeaturedWithLikes posts={posts} />
+    </Suspense>
   );
 }
 
@@ -46,10 +54,7 @@ async function PublishedFeed({
 }) {
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
-  const [feed, session] = await Promise.all([
-    listPublishedPosts(page),
-    getSession(),
-  ]);
+  const feed = await listPublishedPosts(page);
 
   if (feed.items.length === 0) {
     return (
@@ -59,11 +64,28 @@ async function PublishedFeed({
     );
   }
 
-  const likeState = await getViewerLikeState(
-    feed.items.map((post) => post.id),
-    session,
+  return (
+    <Suspense
+      fallback={
+        <PostGrid
+          posts={feed.items}
+          page={feed.page}
+          pageCount={feed.pageCount}
+          basePath="/"
+        />
+      }
+    >
+      <PublishedFeedWithLikes feed={feed} />
+    </Suspense>
   );
+}
 
+async function PublishedFeedWithLikes({
+  feed,
+}: {
+  feed: Awaited<ReturnType<typeof listPublishedPosts>>;
+}) {
+  const likeState = await getViewerLikeState(feed.items.map((post) => post.id));
   return (
     <PostGrid
       posts={feed.items}
