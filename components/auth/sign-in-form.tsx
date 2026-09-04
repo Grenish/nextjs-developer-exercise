@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "@/components/ui/toast";
 
-export function SignInForm() {
+export function SignInForm({ nextPath = "/" }: { nextPath?: string }) {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
@@ -49,7 +49,7 @@ export function SignInForm() {
       email,
       password,
       rememberMe,
-      callbackURL: "/",
+      callbackURL: nextPath,
     });
     setPending(false);
 
@@ -64,7 +64,7 @@ export function SignInForm() {
     }
 
     toast.add({ type: "success", title: "Welcome back." });
-    router.push("/");
+    router.push(nextPath);
     router.refresh();
   }
 
